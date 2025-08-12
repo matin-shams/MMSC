@@ -1,26 +1,35 @@
 from firedrake import *
-from irksome import GaussLegendre, Dt, MeshConstant, TimeStepper
-import gc
+from irksome import GaussLegendre, Dt, TimeStepper
+
+
 
 # ─── Parameters ───────────────────────────────────────────────────────────────
-final_t       = 1.0            # Final time
-N             = 2**5           # Mesh resolution
-dt            = Constant(2**-12)
-Re            = Constant(2**2)
-t             = Constant(0)    
-butcher_tableau = GaussLegendre(1)
+final_t = 2**0  # Final time
+N = 2**5  # Mesh resolution
+dt = Constant(2**-12)  # Timestep
+Re = Constant(2**2)  # Reynolds number
+S = 1  # Order
+centres_amplitudes = [  # Vortex centres and relative amplitudes
+    ((0.381966, 0.763932), 1),
+    ((0.618034, 0.236068), -1)
+]
 
-# ─── Mesh & Spaces ─────────────────────────────────────────────────────────────
+
+
+# ─── Mesh & spaces ─────────────────────────────────────────────────────────────
+# Mesh
 msh = UnitSquareMesh(N, N, quadrilateral=False)
-V   = FunctionSpace(msh, "CG", 2, variant="alfeld")   # Scalar CG₂
-Q   = FunctionSpace(msh, "DG", 1, variant="alfeld")   # Scalar DG₁
-W   = FunctionSpace(msh, "CG", 3, variant="alfeld")   # Scalar CG₃
-UP  = MixedFunctionSpace([V, V, Q, V, V, Q, W])       # uₓ,u_y,p,αₓ,α_y,β,ω
-
-# Coordinates
 x, y = SpatialCoordinate(msh)
 
-# ─── Stream‐function utilities (IC only) , analytical ψ ──────────────────────────────────────
+# Spaces
+W = FunctionSpace(msh, "CG", 3, variant="alfeld")  # Scalar CG₃
+U = FunctionSpace(msh, "CG", 2, variant="alfeld")  # Scalar CG₂
+P = FunctionSpace(msh, "DG", 1, variant="alfeld")  # Scalar DG₁
+UUPUUPW = U*U*P*U*U*P*W  # u_x, u_y, p, α_x, α_y, β, ω
+
+
+
+# ─── Setting up analytical IC in ψ ──────────────────────────────────────
 layers = 10
 def layer_summands(x, y, f, layers=10):
     base = f(x, y, 0, 0)
@@ -53,127 +62,134 @@ def stream_func_tidy(x,y,X,Y):
         ),
     )
 
-# ─── Build analytical ψ and recover (uₓ,u_y) IC ──────────────────────────────
-# dipole centres
-v1 = (0.381966, 0.763932)
-v2 = (0.618034, 0.236068)
-psi_expr = stream_func_tidy(x, y, *v1) - stream_func_tidy(x, y, *v2)
+psi_expr = sum([amplitude * stream_func_tidy(x, y, *centre) for (centre, amplitude) in centres_amplitudes])
 
-# small mixed space just for IC
-UV  = FunctionSpace(msh, "CG", 2, variant="alfeld")
-PQ  = FunctionSpace(msh, "DG", 1, variant="alfeld")
-UVP = MixedFunctionSpace([UV, UV, PQ])
-uvp = Function(UVP)
-u_x_, u_y_, p_ = split(uvp)
-v_x_, v_y_, q_ = TestFunctions(UVP)
+
+
+# ─── Recover discrete IC in u ──────────────────────────────
+# Spaces
+UUP = U*U*P
+
+# Functions
+uup_ = Function(UUP)
+u_x_, u_y_, p_ = split(uup_)
 u_ = as_vector([u_x_, u_y_])
-rot_v_ = v_y_.dx(0) - v_x_.dx(1)
+v_x_, v_y_, q_ = TestFunctions(UUP)
+v_ = as_vector([v_x_, v_y_])
 
-#  curl u = -Δψ
-F_ic = (
-    inner(u_, as_vector([v_x_, v_y_]))*dx
-  - p_*div(as_vector([v_x_, v_y_]))*dx
-  - psi_expr*rot_v_*dx
-  - q_*div(u_)*dx
-)
-bc_ic = [
-    DirichletBC(UVP.sub(0), 0.0, 1),
-    DirichletBC(UVP.sub(0), 0.0, 2),
-    DirichletBC(UVP.sub(1), 0.0, 3),
-    DirichletBC(UVP.sub(1), 0.0, 4),
+# Form (curl u = -Δψ)
+rot = lambda vec : vec[0].dx(1) - vec[1].dx(0)
+F_ = (
+    inner(u_, v_)
+  - inner(p_, div(v_))
+  - inner(psi_expr, rot(v_))
+  - inner(q_, div(u_))
+) * dx
+
+# BCs
+bcs_ = [
+    DirichletBC(UUP.sub(0), 0.0, 1),
+    DirichletBC(UUP.sub(0), 0.0, 2),
+    DirichletBC(UUP.sub(1), 0.0, 3),
+    DirichletBC(UUP.sub(1), 0.0, 4),
 ]
 
-#sp = {"pc_type":"lu"}
-sp = {
+# Solve
+sp_ = {
+    # "pc_type": "lu",
     "ksp_monitor_true_residual": None,
 }
-solve(F_ic == 0, uvp, bcs=bc_ic, solver_parameters=sp)
+solve(F_ == 0, uup_, bcs=bcs_, solver_parameters=sp_)
 
-# extract and build vector u₀
-u_x0, u_y0, _ = split(uvp)
-u0 = Function(VectorFunctionSpace(msh, "CG", 2, variant="alfeld"))
-u0.interpolate(as_vector([u_x0, u_y0]))
-u0.assign(u0 / sqrt(assemble(inner(u0,u0)*dx)))  # normalise energy
-
-# project into big UP (zeros for all other p,α,β,ω)
-up_init = project(as_vector([
-    u0[0], u0[1],          # uₓ, u_y
-    0,                     # p
-    0, 0,                  # αₓ, α_y
-    0,                     # β
-    0                      # ω
-]), UP)
-# assign into the solution function
-up = Function(UP).assign(up_init)
+# Normalise
+energy_ = 1/2 * assemble(inner(u_,u_)*dx)
+u_.assign(u_ / sqrt(energy))
 
 
-# ─── Now our 2d existing scheme, unchanged as before ───────────────────────────────────────
-u_x, u_y, p, alpha_x, alpha_y, beta, omega = split(up)
-u     = as_vector([u_x, u_y])
-alpha = as_vector([alpha_x, alpha_y])
-v_x, v_y, q, gamma_x, gamma_y, delta, chi = TestFunctions(UP)
-v     = as_vector([v_x, v_y])
-gamma = as_vector([gamma_x, gamma_y])
 
-# manufactured forcing
+# ─── Functions (for actual solve) ─────────────────────────────────────────────────────────────
+# Trial function
+uupaabw = Function(UUPUUPW)
+(u_x, u_y, p, alpha_x, alpha_y, beta, omega) = split(uupaabw)
+u = as_vector([u_x, u_y]);  alpha = as_vector([alpha_x, alpha_y])
+u.interpolate(u_)
+
+# Test function
+vvqggdc = TestFunction(UUPUUPW)
+(v_x, v_y, q, gamma_x, gamma_y, delta, chi) = split(vvqggdc)
+v = as_vector([v_x, v_y]);  gamma = as_vector([gamma_x, gamma_y])
+
+
+
+
+# ─── Form ───────────────────────────────────────
+# Forcing
 f = as_vector([0,0])
 
-def curl(vec):
-    return as_vector([vec.dx(1), - vec.dx(0)])
+# Form
+curl_2D = lambda vec: as_vector([vec.dx(1), - vec.dx(0)])
+cross_2D = lambda vec_1, vec_2 : vec_1[0]*vec_2[1] - vec_1[1]*vec_2[0]
 F = (
     (
-        inner(Dt(u), v) * dx
-        + inner(omega * as_vector([- u[1], u[0]]), v) * dx
-        + 1/Re * inner(alpha, v) * dx
-        - p * div(v) * dx
+        inner(Dt(u), v)
+        - inner(omega, cross_2D(u, v))
+        + 1/Re * inner(alpha, v)
+        - inner(p, div(v))
     )
-    - div(u) * q * dx
+    - inner(div(u), q)
     + (
-        inner(alpha, gamma) * dx
-        - inner(rot(u), rot(gamma)) * dx
-        - beta * div(gamma) * dx
+        inner(alpha, gamma)
+        - inner(rot(u), rot(gamma))
+        - inner(beta, div(gamma))
     )
-    - div(alpha) * delta * dx
+    - inner(div(alpha), delta)
     + (
-        inner(curl(omega), curl(chi)) * dx
-        - inner(alpha, curl(chi)) * dx
+        inner(curl_2D(omega), curl_2D(chi))
+        - inner(alpha, curl_2D(chi))
     )
-)
+) * dx
 
-# BCs (unchanged)
-bc = [
-    DirichletBC(UP.sub(0), 0, 1),
-    DirichletBC(UP.sub(0), 0, 2),
-    DirichletBC(UP.sub(1), 0, 3),
-    DirichletBC(UP.sub(1), 0, 4),
-    DirichletBC(UP.sub(3), 0, 1),
-    DirichletBC(UP.sub(3), 0, 2),
-    DirichletBC(UP.sub(4), 0, 3),
-    DirichletBC(UP.sub(4), 0, 4),
-    DirichletBC(UP.sub(6), 0, "on_boundary"),
+
+
+# ─── Solve ───────────────────────────────────────
+# BCs
+bcs = [
+    DirichletBC(UUPUUPW.sub(0), 0, 1),
+    DirichletBC(UUPUUPW.sub(0), 0, 2),
+    DirichletBC(UUPUUPW.sub(1), 0, 3),
+    DirichletBC(UUPUUPW.sub(1), 0, 4),
+    DirichletBC(UUPUUPW.sub(3), 0, 1),
+    DirichletBC(UUPUUPW.sub(3), 0, 2),
+    DirichletBC(UUPUUPW.sub(4), 0, 3),
+    DirichletBC(UUPUUPW.sub(4), 0, 4),
+    DirichletBC(UUPUUPW.sub(6), 0, "on_boundary"),
 ]
 
-# Time‐stepper
+# Timestepper
 sp = {
+    # "pc_type": "lu",
     "ksp_monitor_true_residual": None,
 }
-stepper = TimeStepper(F, butcher_tableau, t, dt, up, bcs=bc,
-                      solver_parameters=sp)
+t = Constant(0)
+stepper = TimeStepper(F, GaussLegendre(S), t, dt, uupaabw, bcs=bcs, solver_parameters=sp)
 
-# Output & time‐loop
-pvd = VTKFile("vortex_2d.pvd")
-u_x_n, u_y_n, p_n, alpha_x_n, alpha_y_n, beta_n, omega_n = up.subfunctions
-pvd.write(u_x_n, u_y_n, p_n, alpha_x_n, alpha_y_n, beta_n, omega_n)
+# Paraview setup
+pvd = VTKFile("output/vortex_2d.pvd")
+u_x_out = uupaabw.subfunctions[0];  u_x_out.rename("Velocity (x)")
+u_y_out = uupaabw.subfunctions[1];  u_y_out.rename("Velocity (y)")
 
+# Solve loop
+pvd.write(u_x_out, u_y_out)
 while float(t) < final_t:
     if float(t) + float(dt) > final_t:
         dt.assign(final_t - float(t))
     stepper.advance()
-    print(float(t),
-          assemble(div(u)**2*dx),
-          assemble(div(alpha)**2*dx),
-          assemble(inner(curl2(omega)-alpha, curl2(omega)-alpha)*dx))
+    print(
+        float(t),
+        assemble(inner(div(u), div(u))*dx),
+        assemble(inner(div(alpha), div(alpha))*dx),
+        assemble(inner(curl_2D(omega)-alpha, curl_2D(omega)-alpha)*dx)
+    )
     t.assign(float(t) + float(dt))
-    u_x_n, u_y_n, p_n, alpha_x_n, alpha_y_n, beta_n, omega_n = up.subfunctions
-    pvd.write(u_x_n, u_y_n, p_n, alpha_x_n, alpha_y_n, beta_n, omega_n)
+    pvd.write(u_x_out, u_y_out)
 
