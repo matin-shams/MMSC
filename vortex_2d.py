@@ -4,13 +4,12 @@ from firedrake import *
 
 # ─── Parameters ───────────────────────────────────────────────────────────────
 final_t = 2**0  # Final time
-N = 2**3  # Mesh resolution
-dt = Constant(2**-12)  # Timestep
-Re = Constant(2**2)  # Reynolds number
-S = 1  # Order
+N = 2**5  # Mesh resolution
+dt = Constant(2**-8)  # Timestep
+Re = Constant(2**10)  # Reynolds number
 centres_amplitudes = [  # Vortex centres and relative amplitudes
     ((0.381966, 0.763932), 1),
-    ((0.618034, 0.236068), -1)
+    # ((0.618034, 0.236068), -0.5)
 ]
 
 
@@ -29,7 +28,7 @@ UUPUUPW = U*U*P*U*U*P*W  # u_x, u_y, p, α_x, α_y, β, ω
 
 
 # ─── Setting up analytical IC in ψ ──────────────────────────────────────
-layers = 10
+layers = 2**3
 
 def layer_summands(x, y, f, layers=10):
     base = f(x, y, 0, 0)
@@ -99,6 +98,7 @@ sp_ = {
     # "pc_type": "lu",
     "ksp_monitor_true_residual": None,
 }
+print(GREEN % f"Setting up ICs:")
 solve(F_ == 0, uup_, bcs=bcs_, solver_parameters=sp_)
 
 # Norm
@@ -135,9 +135,9 @@ cross_2D = lambda vec_1, vec_2 : vec_1[0]*vec_2[1] - vec_1[1]*vec_2[0]
 u_mid = 1/2 * (u + u_)
 F = (
     (
-        inner(Re/dt * (u - u_), v)
-        - inner(Re * omega, cross_2D(u, v))
-        + inner(alpha, v)
+        inner(1/dt * (u - u_), v)
+        + inner(omega, cross_2D(u_mid, v))
+        + inner(1/Re * alpha, v)
         - inner(p, div(v))
     )
     - inner(div(u), q)
@@ -174,10 +174,12 @@ sp = {
     # "pc_type": "lu",
     "ksp_monitor_true_residual": None,
 }
-t = Constant(0)
-stepper = TimeStepper(F, GaussLegendre(S), t, dt, uupaabw, bcs=bcs, solver_parameters=sp)
 
-# Paraview setup
+# Paraview setup (ICs)
+u_x_out_ = uup_.subfunctions[0]
+u_y_out_ = uup_.subfunctions[1]
+
+# Paraview setup (transient)
 pvd_cts = VTKFile("output/vortex_2d_cts.pvd")
 u_x_out = uupaabw.subfunctions[0];  u_x_out.rename("Velocity (x)")
 u_y_out = uupaabw.subfunctions[1];  u_y_out.rename("Velocity (y)")
@@ -189,14 +191,14 @@ beta_out = uupaabw.subfunctions[5];  beta_out.rename("Beta")
 omega_out = uupaabw.subfunctions[6];  omega_out.rename("Vorticity")
 
 # Solve loop
-u_x.assign(u_x_);  u_y.assign(u_y_)
+u_x_out.assign(u_x_out_);  u_y_out.assign(u_y_out_)
 pvd_cts.write(u_x_out, u_y_out)
-while float(t) < final_t:
-    if float(t) + float(dt) > final_t:
-        dt.assign(final_t - float(t))
-    stepper.advance()
+t = 0
+while t <= final_t - float(dt)/2:
+    t += float(dt)
+    print(GREEN % f"Solving for time t={t}:")
+    solve(F==0, uupaabw, bcs=bcs, solver_parameters=sp)
     print(
-        float(t),
         assemble(inner(div(u), div(u)) * dx),
         assemble(inner(div(alpha), div(alpha)) * dx),
         assemble(inner(curl_2D(omega)-alpha, curl_2D(omega)-alpha) * dx),
@@ -205,5 +207,4 @@ while float(t) < final_t:
     )
     pvd_cts.write(u_x_out, u_y_out)
     pvd_discts.write(p_out, alpha_x_out, alpha_y_out, beta_out, omega_out)
-    t.assign(float(t) + float(dt))
-    u_x_.assign(u_x);  u_y_.assign(u_y)
+    u_x_out_.assign(u_x_out);  u_y_out_.assign(u_y_out)
