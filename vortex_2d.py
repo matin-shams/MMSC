@@ -1,11 +1,10 @@
 from firedrake import *
-from irksome import GaussLegendre, Dt, TimeStepper
 
 
 
 # ─── Parameters ───────────────────────────────────────────────────────────────
 final_t = 2**0  # Final time
-N = 2**5  # Mesh resolution
+N = 2**3  # Mesh resolution
 dt = Constant(2**-12)  # Timestep
 Re = Constant(2**2)  # Reynolds number
 S = 1  # Order
@@ -31,6 +30,7 @@ UUPUUPW = U*U*P*U*U*P*W  # u_x, u_y, p, α_x, α_y, β, ω
 
 # ─── Setting up analytical IC in ψ ──────────────────────────────────────
 layers = 10
+
 def layer_summands(x, y, f, layers=10):
     base = f(x, y, 0, 0)
     out  = base
@@ -101,18 +101,25 @@ sp_ = {
 }
 solve(F_ == 0, uup_, bcs=bcs_, solver_parameters=sp_)
 
-# Normalise
+# Norm
 energy_ = 1/2 * assemble(inner(u_,u_)*dx)
-u_.assign(u_ / sqrt(energy))
 
 
 
 # ─── Functions (for actual solve) ─────────────────────────────────────────────────────────────
 # Trial function
 uupaabw = Function(UUPUUPW)
+uupaabw.interpolate(as_vector([
+    u_x_ / sqrt(energy_),
+    u_y_ / sqrt(energy_),
+    0,
+    0,
+    0,
+    0,
+    0,
+]))
 (u_x, u_y, p, alpha_x, alpha_y, beta, omega) = split(uupaabw)
 u = as_vector([u_x, u_y]);  alpha = as_vector([alpha_x, alpha_y])
-u.interpolate(u_)
 
 # Test function
 vvqggdc = TestFunction(UUPUUPW)
@@ -174,12 +181,15 @@ t = Constant(0)
 stepper = TimeStepper(F, GaussLegendre(S), t, dt, uupaabw, bcs=bcs, solver_parameters=sp)
 
 # Paraview setup
-pvd = VTKFile("output/vortex_2d.pvd")
+pvd_cts = VTKFile("output/vortex_2d_cts.pvd")
+u_x_out = uupaabw.subfunctions[0];  u_x_out.rename("Velocity (x)")
+u_y_out = uupaabw.subfunctions[1];  u_y_out.rename("Velocity (y)")
+pvd_discts = VTKFile("output/vortex_2d_discts.pvd")
 u_x_out = uupaabw.subfunctions[0];  u_x_out.rename("Velocity (x)")
 u_y_out = uupaabw.subfunctions[1];  u_y_out.rename("Velocity (y)")
 
 # Solve loop
-pvd.write(u_x_out, u_y_out)
+pvd_cts.write(u_x_out, u_y_out)
 while float(t) < final_t:
     if float(t) + float(dt) > final_t:
         dt.assign(final_t - float(t))
@@ -191,5 +201,5 @@ while float(t) < final_t:
         assemble(inner(curl_2D(omega)-alpha, curl_2D(omega)-alpha)*dx)
     )
     t.assign(float(t) + float(dt))
-    pvd.write(u_x_out, u_y_out)
+    pvd_cts.write(u_x_out, u_y_out)
 
