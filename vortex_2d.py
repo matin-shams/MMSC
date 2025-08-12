@@ -102,22 +102,18 @@ sp_ = {
 solve(F_ == 0, uup_, bcs=bcs_, solver_parameters=sp_)
 
 # Norm
-energy_ = 1/2 * assemble(inner(u_,u_)*dx)
+energy_ = assemble(1/2 * inner(u_, u_) * dx)
+uup_.interpolate(as_vector([
+    u_x_ / sqrt(energy_),
+    u_y_ / sqrt(energy_),
+    0,
+]))
 
 
 
 # ─── Functions (for actual solve) ─────────────────────────────────────────────────────────────
 # Trial function
 uupaabw = Function(UUPUUPW)
-uupaabw.interpolate(as_vector([
-    u_x_ / sqrt(energy_),
-    u_y_ / sqrt(energy_),
-    0,
-    0,
-    0,
-    0,
-    0,
-]))
 (u_x, u_y, p, alpha_x, alpha_y, beta, omega) = split(uupaabw)
 u = as_vector([u_x, u_y]);  alpha = as_vector([alpha_x, alpha_y])
 
@@ -136,17 +132,18 @@ f = as_vector([0,0])
 # Form
 curl_2D = lambda vec: as_vector([vec.dx(1), - vec.dx(0)])
 cross_2D = lambda vec_1, vec_2 : vec_1[0]*vec_2[1] - vec_1[1]*vec_2[0]
+u_mid = 1/2 * (u + u_)
 F = (
     (
-        inner(Dt(u), v)
-        - inner(omega, cross_2D(u, v))
-        + 1/Re * inner(alpha, v)
+        inner(Re/dt * (u - u_), v)
+        - inner(Re * omega, cross_2D(u, v))
+        + inner(alpha, v)
         - inner(p, div(v))
     )
     - inner(div(u), q)
     + (
         inner(alpha, gamma)
-        - inner(rot(u), rot(gamma))
+        - inner(rot(u_mid), rot(gamma))
         - inner(beta, div(gamma))
     )
     - inner(div(alpha), delta)
@@ -192,6 +189,7 @@ beta_out = uupaabw.subfunctions[5];  beta_out.rename("Beta")
 omega_out = uupaabw.subfunctions[6];  omega_out.rename("Vorticity")
 
 # Solve loop
+u_x.assign(u_x_);  u_y.assign(u_y_)
 pvd_cts.write(u_x_out, u_y_out)
 while float(t) < final_t:
     if float(t) + float(dt) > final_t:
@@ -205,6 +203,7 @@ while float(t) < final_t:
         assemble(1/2 * inner(u, u) * dx),
         assemble(1/2 * inner(rot(u), rot(u)) * dx)
     )
-    t.assign(float(t) + float(dt))
     pvd_cts.write(u_x_out, u_y_out)
     pvd_discts.write(p_out, alpha_x_out, alpha_y_out, beta_out, omega_out)
+    t.assign(float(t) + float(dt))
+    u_x_.assign(u_x);  u_y_.assign(u_y)
