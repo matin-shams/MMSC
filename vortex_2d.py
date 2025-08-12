@@ -185,8 +185,11 @@ pvd_cts = VTKFile("output/vortex_2d_cts.pvd")
 u_x_out = uupaabw.subfunctions[0];  u_x_out.rename("Velocity (x)")
 u_y_out = uupaabw.subfunctions[1];  u_y_out.rename("Velocity (y)")
 pvd_discts = VTKFile("output/vortex_2d_discts.pvd")
-u_x_out = uupaabw.subfunctions[0];  u_x_out.rename("Velocity (x)")
-u_y_out = uupaabw.subfunctions[1];  u_y_out.rename("Velocity (y)")
+p_out = uupaabw.subfunctions[2];  p_out.rename("Pressure")
+alpha_x_out = uupaabw.subfunctions[3];  alpha_x_out.rename("Alpha (x)")
+alpha_y_out = uupaabw.subfunctions[4];  alpha_y_out.rename("Alpha (y)")
+beta_out = uupaabw.subfunctions[5];  beta_out.rename("Beta")
+omega_out = uupaabw.subfunctions[6];  omega_out.rename("Vorticity")
 
 # Solve loop
 pvd_cts.write(u_x_out, u_y_out)
@@ -196,10 +199,12 @@ while float(t) < final_t:
     stepper.advance()
     print(
         float(t),
-        assemble(inner(div(u), div(u))*dx),
-        assemble(inner(div(alpha), div(alpha))*dx),
-        assemble(inner(curl_2D(omega)-alpha, curl_2D(omega)-alpha)*dx)
+        assemble(inner(div(u), div(u)) * dx),
+        assemble(inner(div(alpha), div(alpha)) * dx),
+        assemble(inner(curl_2D(omega)-alpha, curl_2D(omega)-alpha) * dx),
+        assemble(1/2 * inner(u, u) * dx),
+        assemble(1/2 * inner(rot(u), rot(u)) * dx)
     )
     t.assign(float(t) + float(dt))
     pvd_cts.write(u_x_out, u_y_out)
-
+    pvd_discts.write(p_out, alpha_x_out, alpha_y_out, beta_out, omega_out)
