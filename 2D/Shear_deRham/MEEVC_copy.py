@@ -19,8 +19,8 @@ timestep = Constant(2**(-8))
 duration = 2**3
 
 # Setting
-Re = Constant(2**24)
-
+Re = Constant(2**16)
+amp = 1e-5 #amp of the perturbation
 # Other
 save_int = 1  # How regularly to save output
 
@@ -71,7 +71,7 @@ sw = Function(SS)
 s_out, w_out = sw.subfunctions
 s_out.interpolate(
     conditional(le(y, 0.5), y, 1-y)
-  - 1e-10 * cos(2*pi*x) * sin(2*pi*y)
+  - amp * cos(2*pi*x) * sin(2*pi*y)
 )
 (s, w) = split(sw)
 
@@ -142,14 +142,19 @@ sp = {
     # "ksp_monitor_true_residual" : None,
 }
 
-
+def compute_auxiliary_enstrophy(s_ae):
+    w_ae = Function(S)
+    v_ae = TestFunction(S)
+    F_aux = (inner(grad(s_ae), grad(v_ae)) - w_ae * v_ae) * dx
+    solve(F_aux == 0, w_ae, bcs=[DirichletBC(S, 0, "on_boundary")])
+    return assemble(0.5 * inner(w_ae, w_ae) * dx)
 
 '''
 Write text outputs
 '''
 # Print and write QoIs
 def print_write_qoi(qoi_name, qoi_file, qoi_operator, write_type):
-    qoi = qoi_operator(s, w)
+    qoi = qoi_operator(s_out)
     print(GREEN % f"{qoi_name}: {qoi}")
     if mesh.comm.rank == 0:
         path = output_base / "qois" / f"{qoi_file}.txt"
@@ -158,10 +163,10 @@ def print_write_qoi(qoi_name, qoi_file, qoi_operator, write_type):
             f.write(str(qoi) + "\n")
 
 qois = [
-    {"Name": "Energy", "File": "energy", "Operator": lambda s_ref, w_ref: assemble(1/2 * H10(s_ref, s_ref))},
-    {"Name": "Broken Enstrophy", "File": "broken_enstrophy", "Operator": lambda s_ref, w_ref: assemble(1/2 * H20_broken(s_ref, s_ref))},
-    {"Name": "Internal Enstrophy", "File": "internal_enstrophy", "Operator": lambda s_ref, w_ref: assemble(1/2 * H20(s_ref, s_ref))},
-    {"Name": "Auxiliary Enstrophy", "File": "auxiliary_enstrophy", "Operator": lambda s_ref, w_ref: assemble(1/2 * L2(w_ref, w_ref))},
+    {"Name": "Energy", "File": "energy", "Operator": lambda s_ref: assemble(0.5 * H10(s_ref, s_ref))},
+    {"Name": "Broken Enstrophy", "File": "broken_enstrophy", "Operator": lambda s_ref: assemble(0.5 * H20_broken(s_ref, s_ref))},
+    {"Name": "Internal Enstrophy", "File": "internal_enstrophy", "Operator": lambda s_ref: assemble(0.5 * H20(s_ref, s_ref))},
+    {"Name": "Auxiliary Enstrophy", "File": "auxiliary_enstrophy", "Operator": compute_auxiliary_enstrophy},
 ]
 
 def print_write(write_type):
