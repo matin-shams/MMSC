@@ -3,7 +3,7 @@ import gc
 from pathlib import Path
 
 # Parameters
-nx = 2**9  # Mesh number
+nx = 2**5  # Mesh number
 k = 3      # Spatial degree (Must be >=3, I think)
 sigma = Constant(2**5)  # IP parameter
 
