@@ -105,8 +105,8 @@ F = (
       + 1/Re * H10(w, v_s)
     )
   + (  # (Auxiliary) vorticity equation
-        1/Re * L2(w, v_w)
-      - 1/Re * H10(s_mid, v_w)
+      - 1/Re * L2(w, v_w)
+      + 1/Re * H10(s_mid, v_w)
     )
 )
 
