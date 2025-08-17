@@ -63,14 +63,20 @@ H20 = lambda a, b: L2(div(grad(a)), div(grad(b)))
 
 cross_2D = lambda a, b: a[0]*b[1] - a[1]*b[0]
 
+# Classical non-conforming convective term (your supervisor’s pattern)
+def convective_classical(sA, v):
+    return (
+        - div(grad(sA)) * cross_2D(grad(sA), grad(v)) * dx
+        + 2 * avg(inner(grad(sA), n)) * cross_2D(avg(grad(sA)), avg(grad(v))) * ds
+    )
+
 s_ = Function(S)
 s_mid = 0.5 * (s + s_)
 
 F = (
-    1/timestep * H10(s - s_, v)
-  - div(grad(s_mid)) * cross_2D(grad(s_mid), grad(v)) * dx
-  + 2 * avg(inner(grad(s_mid), n)) * cross_2D(avg(grad(s_mid)), avg(grad(v))) * dS
-  + 1/Re * H20(s_mid, v)
+    1/timestep * H10(s - s_, v)                 # time derivative in H1
+  + convective_classical(s_mid, v)              # classical non-conforming convection
+  + 1/Re * H20_broken(s_mid, v)                 # C0-IP biharmonic viscosity  ✅
 )
 
 # Solver parameters
