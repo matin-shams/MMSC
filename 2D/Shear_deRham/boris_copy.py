@@ -162,9 +162,9 @@ def print_write_qoi(qoi_name, qoi_file, qoi_operator, write_type):
             f.write(str(qoi) + "\n")
 
 qois = [
-    {"Name": "Energy", "File": "energy", "Operator": lambda s_ref, w_ref: assemble(1/2 * H10(s_ref, s_ref))},
-    {"Name": "Broken Enstrophy", "File": "broken_enstrophy", "Operator": lambda s_ref, w_ref: assemble(1/2 * H20_broken(s_ref, s_ref))},
-    {"Name": "Internal Enstrophy", "File": "internal_enstrophy", "Operator": lambda s_ref, w_ref: assemble(1/2 * H20(s_ref, s_ref))},
+    {"Name": "Energy", "File": "energy", "Operator": lambda s_ref : assemble(1/2 * H10(s_ref, s_ref))},
+    {"Name": "Broken Enstrophy", "File": "broken_enstrophy", "Operator": lambda s_ref : assemble(1/2 * H20_broken(s_ref, s_ref))},
+    {"Name": "Internal Enstrophy", "File": "internal_enstrophy", "Operator": lambda s_ref : assemble(1/2 * H20(s_ref, s_ref))},
     {"Name": "Auxiliary Enstrophy", "File": "auxiliary_enstrophy", "Operator": compute_auxiliary_enstrophy},
 ]
 
@@ -200,6 +200,7 @@ while (time < duration - float(timestep)/2):
 
     # Solve
     s_.assign(s_out)
+    print(sp)
     solve(F==0, sw, bcs=[DirichletBC(SS_, 0, "on_boundary") for SS_ in SS], solver_parameters=sp)
 
     # Collect garbage

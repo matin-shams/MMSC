@@ -45,7 +45,7 @@ s_out = s
 v = TestFunction(S)
 s_out.interpolate(
     conditional(le(y, 0.5), y, 1-y)
-  - 1e-10 * cos(2*pi*x) * sin(2*pi*y)
+  - 1e-3 * cos(2*pi*x) * sin(2*pi*y)
 )
 
 # Residual definition
@@ -67,16 +67,16 @@ cross_2D = lambda a, b: a[0]*b[1] - a[1]*b[0]
 def convective_classical(sA, v):
     return (
         - div(grad(sA)) * cross_2D(grad(sA), grad(v)) * dx
-        + 2 * avg(inner(grad(sA), n)) * cross_2D(avg(grad(sA)), avg(grad(v))) * ds
+        + 2 * avg(inner(grad(sA), n)) * cross_2D(avg(grad(sA)), avg(grad(v))) * dS
     )
 
 s_ = Function(S)
 s_mid = 0.5 * (s + s_)
 
 F = (
-    1/timestep * H10(s - s_, v)                 # time derivative in H1
-  + convective_classical(s_mid, v)              # classical non-conforming convection
-  + 1/Re * H20_broken(s_mid, v)                 # C0-IP biharmonic viscosity  ✅
+   1/timestep * H10(s - s_, v)
+   + convective_classical(s_mid, v)    
+   + (1/Re) * H20_broken(s_mid, v)
 )
 
 # Solver parameters

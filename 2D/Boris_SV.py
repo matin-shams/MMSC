@@ -94,7 +94,10 @@ while float(t) < final_t:
     print(assemble((div(u)**2)*dx))
     print(assemble((div(alpha)**2)*dx))
     print(assemble(inner(curl(omega) - alpha, curl(omega) - alpha)*dx))
+    print("DIV OF CURL U" , assemble(div(curl(as_vector([u_x, u_y]))) **2 * dx))
     t.assign(float(t) + float(dt))
     u_x_n, u_y_n, p_n, alpha_x_n, alpha_y_n, beta_n, omega_n = up.subfunctions
     pvd.write(u_x_n, u_y_n, p_n, alpha_x_n, alpha_y_n, beta_n, omega_n)
+
+    
 

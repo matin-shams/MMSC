@@ -18,7 +18,6 @@ def main():
     datasets = {
         "Boris": base / "boris_output" / "qois",
         "MEEVC": base / "meevc_output" / "qois",
-        "Classical": base / "classical_output" / "qois",
     }
     series = {}
     for name, directory in datasets.items():
@@ -31,20 +30,25 @@ def main():
         times = np.arange(len(broken)) * DT
         series[name] = {
             "times": times,
-            "broken": broken,
-            "internal": internal,
-            "aux": aux,
+            "broken_enstrophy": broken,
+            "internal_enstrophy": internal,
+            "auxiliary_enstrophy": aux,
         }
 
     if not series:
-        print("No data to plot. Run the Boris, MEEVC, and Classical solvers first.")
+        print("No data to plot. Run the Boris and MEEVC solvers first.")
         return
 
     # Plot broken and internal enstrophy
     plt.figure()
     for name, data in series.items():
-        plt.plot(data["times"], data["broken"], label=f"{name} broken")
-        plt.plot(data["times"], data["internal"], linestyle="--", label=f"{name} internal")
+        plt.plot(data["times"], data["broken_enstrophy"], label=f"{name} Broken Enstrophy")
+        plt.plot(
+            data["times"],
+            data["internal_enstrophy"],
+            linestyle="--",
+            label=f"{name} Internal Enstrophy",
+        )
     plt.xlabel("Time")
     plt.ylabel("Enstrophy")
     plt.title("Broken vs Internal Enstrophy")
@@ -54,7 +58,7 @@ def main():
     # Plot auxiliary enstrophy
     plt.figure()
     for name, data in series.items():
-        plt.plot(data["times"], data["aux"], label=name)
+        plt.plot(data["times"], data["auxiliary_enstrophy"], label=name)
     plt.xlabel("Time")
     plt.ylabel("Auxiliary Enstrophy")
     plt.title("Auxiliary Enstrophy")
