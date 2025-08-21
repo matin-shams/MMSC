@@ -101,6 +101,7 @@ cross_2D = lambda a, b : a[0]*b[1] - a[1]*b[0]
 # Initialise residual
 s_ = Function(S)
 s_mid = 1/2 * (s + s_)
+
 F = (
     (  # Momentum(/stream function) equation
         1/timestep * H10(s - s_, v_s)
