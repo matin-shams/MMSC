@@ -43,8 +43,8 @@ x, y, z = SpatialCoordinate(msh)
 Function spaces
 '''
 # Component
-R = FunctionSpace(msh, "CG", k+2)
-W = FunctionSpace(msh, "N2curl", k+1)
+R = FunctionSpace(msh, "CG", k+1)
+W = FunctionSpace(msh, "N1curl", k+1)
 V = FunctionSpace(msh, "CG", k)
 Q = FunctionSpace(msh, "DG", k-1)
 
@@ -177,7 +177,7 @@ qois_cts = [
 qois_discts = [
     {"Name": "Energy dissipation",                    "File": "energy_diss",      "Operator": dt/4/Re * inner(curl(u + u_prev), curl(u + u_prev)) * dx},
     {"Name": "Enstrophy dissipation",                 "File": "enstrophy_diss",   "Operator": dt/Re * inner(curl(omega), curl(omega)) * dx},
-    {"Name": "Enstrophy convective generation",       "File": "enstrophy_gen",    "Operator": - dt/2 * inner(u + u_prev, dot(grad(omega), omega)) * dx},
+    {"Name": "Enstrophy convective generation",       "File": "enstrophy_gen",    "Operator": dt/2 * inner(cross(u + u_prev, omega), curl(omega)) * dx},
     {"Name": "Divergence of alpha (L2 norm)",         "File": "divergence_alpha", "Operator": inner(div(alpha), div(alpha)) * dx},
     {"Name": "Error in curl omega = alpha (L2 norm)", "File": "omega_error",      "Operator": inner(curl(omega) - alpha, curl(omega) - alpha) * dx},
     {"Name": "Lagrange multiplier (L2 norm)",         "File": "lagrange_mult",    "Operator": inner(r, r) * dx}
