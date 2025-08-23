@@ -111,7 +111,7 @@ def hill(vec, radius):
         )
     )
 
-#The project is divergence-free! 
+# The project is divergence-free!
 # set up and solve a problem like (u - u_vortex, v) - (p, div(v)) - (div(u), q).
 # Divergence-free projection of the vortex
 u_vortex = 2 * hill([x-0.5, y-0.5, z-0.5], 0.25)
