@@ -12,7 +12,7 @@ else:
 T = float(mid_times[-1] + 0.5*dt)
 
 # --- read VTU series with PyVista ---
-files = sorted(glob.glob("u_mid/u_mid_*.vtu"))
+files = sorted(glob.glob("u_mid/u_mid/u_mid_*.vtu"))
 if not files:
     raise RuntimeError("No u_mid_*.vtu files found in u_mid/")
 grids = [pv.read(f) for f in files]
