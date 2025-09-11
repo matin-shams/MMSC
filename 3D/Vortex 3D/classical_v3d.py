@@ -16,7 +16,7 @@ BLUE = "\033[94m%s\033[0m"
 Re = Constant(2**16)  # Reynolds number
 N = 2**2              # Mesh number
 k = 3                 # Polynomial order (>=3)
-final_t = 2**-4       # Final time
+final_t = 2**0       # Final time
 dt = Constant(2**-10) # Timestep
 
 # Mesh (Alfeld split)
@@ -125,8 +125,8 @@ p_out.rename("Pressure")
 
 # QoIs
 def qoi_energy(): return assemble(0.5 * inner(u, u) * dx)
-def qoi_enstrophy(): return assemble(0.5 * inner(omega, omega) * dx)
-def qoi_helicity(): return assemble(0.5 * inner(u, omega) * dx)
+def qoi_enstrophy(): return assemble(0.5 * inner(curl(u), curl(u)) * dx)
+def qoi_helicity(): return assemble(0.5 * inner(u, curl(u)) * dx)
 def qoi_div2(): return assemble(inner(div(u), div(u)) * dx)
 
 qois = [

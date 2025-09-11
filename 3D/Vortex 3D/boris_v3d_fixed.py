@@ -16,7 +16,7 @@ N = 2**2  # Mesh number
 k = 3  # Order (>=3)
 
 # Time discretisation
-final_t = 2**-4  # Final time
+final_t = 2**0  # Final time
 dt = Constant(2**-10)  # Timestep
 
 
