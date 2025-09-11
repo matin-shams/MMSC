@@ -182,7 +182,7 @@ def print_write(write_type):
         print_write_qoi(qoi["Name"], qoi["File"], qoi["Operator"], write_type)
     for qoi in qois_discts:
         if write_type == "w":
-            open("output/classical/" + qoi["File"] + ".txt", "w").write("No data for discontinuous QoI at initial condition")
+            open("output/classical/" + qoi["File"] + ".txt", "w").write("No data for discontinuous QoI at initial condition\n")
         else:
             print_write_qoi(qoi["Name"], qoi["File"], qoi["Operator"], write_type)
             
