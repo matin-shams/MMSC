@@ -151,8 +151,8 @@ def hill(vec, radius):
 Paraview setup
 '''
 # Files
-pvd_cts = VTKFile("output/continuous_data.pvd")
-pvd_discts = VTKFile("output/discontinuous_data.pvd")
+pvd_cts = VTKFile("output/boris/continuous_data.pvd")
+pvd_discts = VTKFile("output/boris/discontinuous_data.pvd")
 
 # Functions
 u_x_out.rename("Velocity (x)"); u_y_out.rename("Velocity (y)"); u_z_out.rename("Velocity (z)")
@@ -187,14 +187,14 @@ qois_discts = [
 def print_write_qoi(qoi_name, qoi_file, qoi_operator, write_type):
     qoi = assemble(qoi_operator)
     print(BLUE % f"{qoi_name}: {qoi}")
-    open("output/" + qoi_file + ".txt", write_type).write(str(qoi) + "\n")
+    open("output/boris/" + qoi_file + ".txt", write_type).write(str(qoi) + "\n")
 
 def print_write(write_type):
     for qoi in qois_cts:
         print_write_qoi(qoi["Name"], qoi["File"], qoi["Operator"], write_type)
     for qoi in qois_discts:
         if write_type == "w":
-            open("output/" + qoi["File"] + ".txt", "w").write("No data for discontinuous QoI at initial condition")
+            open("output/boris/" + qoi["File"] + ".txt", "w").write("No data for discontinuous QoI at initial condition")
         else:
             print_write_qoi(qoi["Name"], qoi["File"], qoi["Operator"], write_type)
             
