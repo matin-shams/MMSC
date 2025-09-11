@@ -8,8 +8,8 @@ if len(sys.argv) != 2:
 
 data_name = sys.argv[1]
 paths = [
-    ("classical", f"output/classical/{data_name}.txt"),
-    ("boris", f"output/boris/{data_name}.txt"),
+    ("Classical", f"output/classical/{data_name}.txt"),
+    ("Boris", f"output/boris/{data_name}.txt"),
 ]
 
 plt.figure()
@@ -22,9 +22,9 @@ for label, path in paths:
         print(f"File not found: {path}")
         continue
 
-plt.title(f"Comparison of {data_name}")
+plt.title(f"Comparison of {data_name.capitalize()}")
 plt.xlabel("Timestep")
-plt.ylabel(data_name)
+plt.ylabel(data_name.capitalize())
 plt.legend()
 plt.tight_layout()
 plt.show()
