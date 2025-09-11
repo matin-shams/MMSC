@@ -309,8 +309,8 @@ bcs = [DirichletBC(VQVQWR.sub(index), 0, surface) for (index, surface) in index_
 # Solver paramters
 sp = {
     # Outer (nonlinear) solver
-    # "snes_atol": 1.0e-11,
-    # "snes_rtol": 1.0e-11,
+    "snes_atol": 1.0e-5,
+    "snes_rtol": 1.0e-5,
 
     "snes_converged_reason"     : None,
     "snes_linesearch_monitor"   : None,
