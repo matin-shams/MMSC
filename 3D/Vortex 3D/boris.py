@@ -43,8 +43,8 @@ x, y, z = SpatialCoordinate(msh)
 Function spaces
 '''
 # Component
-R = FunctionSpace(msh, "CG", k+1)
-W = FunctionSpace(msh, "N1curl", k+1)
+R = FunctionSpace(msh, "CG", k+2)
+W = FunctionSpace(msh, "N2curl", k+1)
 V = FunctionSpace(msh, "CG", k)
 Q = FunctionSpace(msh, "DG", k-1)
 
