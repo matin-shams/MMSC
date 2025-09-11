@@ -41,15 +41,15 @@ def print(*args, sep=" ", end="\n"):
 V = FunctionSpace(msh, "CG", k)       # H^1 scalar
 Q = FunctionSpace(msh, "DG", k-1)     # L^2 pressure
 
-VVVQ = V*V*V*Q   # u_x,u_y,u_z,p
-VVV_prev = V*V*V   # to track u_x,u_y,u_z
+VQ = V*V*V*Q   # u_x,u_y,u_z,p
+V_prev = V*V*V   # to track u_x,u_y,u_z
 
 # Mixed functions
-up = Function(VVVQ)
+up = Function(VQ)
 u_x, u_y, u_z, p = split(up)
 u = as_vector([u_x, u_y, u_z])
 
-vtest = TestFunction(VVVQ)
+vtest = TestFunction(VQ)
 v_x, v_y, v_z, q = split(vtest)
 v = as_vector([v_x, v_y, v_z])
 
@@ -57,16 +57,16 @@ v = as_vector([v_x, v_y, v_z])
 u_x_out, u_y_out, u_z_out, p_out = up.subfunctions
 
 # IC setup functions
-up_ic = Function(VVVQ)
+up_ic = Function(VQ)
 u_x_ic, u_y_ic, u_z_ic, p_ic = split(up_ic)
 u_ic = as_vector([u_x_ic, u_y_ic, u_z_ic])
 
-vq_ic = TestFunction(VVVQ)
+vq_ic = TestFunction(VQ)
 v_x_ic, v_y_ic, v_z_ic, q_ic = split(vq_ic)
 v_ic = as_vector([v_x_ic, v_y_ic, v_z_ic])
 
 # Previous solution holder
-u_prev = Function(VVV_prev)
+u_prev = Function(V_prev)
 
 # Hill vortex functions
 bessel_J_root = 5.7634591968945506
@@ -163,7 +163,7 @@ F_ic = (
 
 index_surface = [(0, 1), (0, 2), (1, 3), (1, 4), (2, 5), (2, 6)]
 
-bcs_ic = [DirichletBC(VVVQ.sub(index), 0, surface) for (index, surface) in index_surface]
+bcs_ic = [DirichletBC(VQ.sub(index), 0, surface) for (index, surface) in index_surface]
 
 sp_ic = {"ksp_monitor_true_residual": None}
 
@@ -191,7 +191,7 @@ F = (
   - inner(q, div(u))
 ) * dx
 
-bcs = [DirichletBC(VVVQ.sub(index), 0, surface) for (index, surface) in index_surface]
+bcs = [DirichletBC(VQ.sub(index), 0, surface) for (index, surface) in index_surface]
 sp = {"ksp_monitor_true_residual": None}
 
 # Time stepping
