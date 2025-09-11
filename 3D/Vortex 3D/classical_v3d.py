@@ -130,10 +130,10 @@ def qoi_helicity(): return assemble(0.5 * inner(u, curl(u)) * dx)
 def qoi_div2(): return assemble(inner(div(u), div(u)) * dx)
 
 qois = [
-    {"Name": "Energy",    "File": "energy",    "Operator": qoi_energy},
-    {"Name": "Enstrophy", "File": "enstrophy", "Operator": qoi_enstrophy},
-    {"Name": "Helicity",  "File": "helicity",  "Operator": qoi_helicity},
-    {"Name": "DivL2",     "File": "divu_l2",   "Operator": qoi_div2},
+    {"Name": "Energy",                    "File": "energy",       "Operator": qoi_energy},
+    {"Name": "Enstrophy",                 "File": "enstrophy",    "Operator": qoi_enstrophy},
+    {"Name": "Helicity",                  "File": "helicity",     "Operator": qoi_helicity},
+    {"Name": "Divergence of u (L2 norm)", "File": "divergence_u", "Operator": qoi_div2},
 ]
 
 def print_write_qoi(qoi_name, qoi_file, qoi_operator, write_type):
