@@ -206,7 +206,7 @@ F_ic = (
 index_surface = [
     (0, 1), (0, 2), (1, 3), (1, 4), (2, 5), (2, 6)
 ]
-bcs_ic = [DirichletBC(VQ_ic.sub(index), 0, surface) for (index, surface) in index_surface]
+bcs_ic = [DirichletBC(VQ.sub(index), 0, surface) for (index, surface) in index_surface]
 
 # Solver paramters
 sp_ic = {
@@ -260,37 +260,18 @@ u_mid = 1/2 * (u + u_prev)
 F = (
     (  # Momentum
         1/dt * inner(u - u_prev, v)
-      - inner(cross(u_mid, omega), v)
-      + 1/Re * inner(alpha, v)
+      - inner(cross(u_mid, curl(u_mid)), v)
+      + 1/Re * inner(curl(u_mid), curl(v))
       - inner(p, div(v))
     )
   + (  # Incompressiblity
       - inner(div(u), q)
-    )
-  + (  # alpha (i.e. curl curl u)
-        inner(alpha, gamma)
-      - inner(curl(u_mid), curl(gamma))
-      - inner(beta, div(gamma))
-    )
-  + (  # alpha divergence-free constraint
-      - inner(div(alpha), delta)
-    )
-  + (  # curl omega = alpha
-        inner(curl(omega), curl(chi))
-      - inner(alpha, curl(chi))
-      + inner(grad(r), chi)
-    )
-  + (  # omega (adjoint) divergence-free constraint
-        inner(omega, grad(s))
     )
 ) * dx
 
 # Boundary conditions
 index_surface = [
     (0, 1), (0, 2), (1, 3), (1, 4), (2, 5), (2, 6),
-    (4, 1), (4, 2), (5, 3), (5, 4), (6, 5), (6, 6),
-    (8, "on_boundary"),
-    (9, "on_boundary")
 ]
 bcs = [DirichletBC(VQ.sub(index), 0, surface) for (index, surface) in index_surface]
 
@@ -326,5 +307,5 @@ while t <= final_t - float(dt)/2:
         u_prev.sub(i).assign(up.sub(i))
     solve(F==0, up, bcs=bcs, solver_parameters=sp)
     pvd_cts.write(u_x_out, u_y_out, u_z_out)
-    pvd_discts.write(p_out, alpha_x_out, alpha_y_out, alpha_z_out, beta_out, omega_out, r_out)
+    pvd_discts.write(p_out)
     print_write("a")
