@@ -40,37 +40,33 @@ def print(*args, sep=" ", end="\n"):
 # Function spaces (Stokes complex)
 V = FunctionSpace(msh, "CG", k)       # H^1 scalar
 Q = FunctionSpace(msh, "DG", k-1)     # L^2 pressure
-W = FunctionSpace(msh, "N1curl", k+1) # H(curl) vorticity
 
-VQVQW = V*V*V*Q*W                 # u_x,u_y,u_z,p,omega
-
-VQ_ic = MixedFunctionSpace([V, V, V, Q]) # For setting up ICs
-V_prev = MixedFunctionSpace([V, V, V])   # to track u_x,u_y,u_z
+VVVQ = V*V*V*Q   # u_x,u_y,u_z,p
+VVV_prev = V*V*V   # to track u_x,u_y,u_z
 
 # Mixed functions
-upw = Function(VQVQW)
-u_x, u_y, u_z, p, omega = split(upw)
+up = Function(VVVQ)
+u_x, u_y, u_z, p = split(up)
 u = as_vector([u_x, u_y, u_z])
 
-vtest = TestFunction(VQVQW)
-v_x, v_y, v_z, q, chi = split(vtest)
+vtest = TestFunction(VVVQ)
+v_x, v_y, v_z, q = split(vtest)
 v = as_vector([v_x, v_y, v_z])
 
 # Subfunctions for output
-u_x_out, u_y_out, u_z_out, p_out, omega_out = upw.subfunctions
+u_x_out, u_y_out, u_z_out, p_out = up.subfunctions
 
 # IC setup functions
-up_ic = Function(VQ_ic)
+up_ic = Function(VVVQ)
 u_x_ic, u_y_ic, u_z_ic, p_ic = split(up_ic)
 u_ic = as_vector([u_x_ic, u_y_ic, u_z_ic])
 
-vq_ic = TestFunction(VQ_ic)
+vq_ic = TestFunction(VVVQ)
 v_x_ic, v_y_ic, v_z_ic, q_ic = split(vq_ic)
 v_ic = as_vector([v_x_ic, v_y_ic, v_z_ic])
 
 # Previous solution holder
-u_prev = Function(V_prev)
-omega_prev = Function(W, name="omega_prev")
+u_prev = Function(VVV_prev)
 
 # Hill vortex functions
 bessel_J_root = 5.7634591968945506
@@ -123,30 +119,21 @@ def hill(vec, radius):
 
 # Paraview setup
 pvd_cts = VTKFile(str(output_base / "classical_vortex_3d_cts.pvd"))
-pvd_discts = VTKFile(str(output_base / "classical_vortex_3d_discts.pvd"))
 
 u_x_out.rename("Velocity (x)"); u_y_out.rename("Velocity (y)"); u_z_out.rename("Velocity (z)")
 p_out.rename("Pressure")
-omega_out.rename("Vorticity")
 
 # QoIs
-def qoi_energy():
-    return assemble(0.5 * inner(u, u) * dx)
-
-def qoi_enstrophy():
-    return assemble(0.5 * inner(omega, omega) * dx)
-
-def qoi_helicity():
-    return assemble(0.5 * inner(u, omega) * dx)
-
-def qoi_div2():
-    return assemble(inner(div(u), div(u)) * dx)
+def qoi_energy(): return assemble(0.5 * inner(u, u) * dx)
+def qoi_enstrophy(): return assemble(0.5 * inner(omega, omega) * dx)
+def qoi_helicity(): return assemble(0.5 * inner(u, omega) * dx)
+def qoi_div2(): return assemble(inner(div(u), div(u)) * dx)
 
 qois = [
     {"Name": "Energy",    "File": "energy",    "Operator": qoi_energy},
     {"Name": "Enstrophy", "File": "enstrophy", "Operator": qoi_enstrophy},
     {"Name": "Helicity",  "File": "helicity",  "Operator": qoi_helicity},
-    {"Name": "DivL2",     "File": "divu_l2",  "Operator": qoi_div2},
+    {"Name": "DivL2",     "File": "divu_l2",   "Operator": qoi_div2},
 ]
 
 def print_write_qoi(qoi_name, qoi_file, qoi_operator, write_type):
@@ -174,11 +161,9 @@ F_ic = (
 ) * dx
 
 
-index_surface = [
-    (0, 1), (0, 2), (1, 3), (1, 4), (2, 5), (2, 6)
-]
+index_surface = [(0, 1), (0, 2), (1, 3), (1, 4), (2, 5), (2, 6)]
 
-bcs_ic = [DirichletBC(VQ_ic.sub(index), 0, surface) for (index, surface) in index_surface]
+bcs_ic = [DirichletBC(VVVQ.sub(index), 0, surface) for (index, surface) in index_surface]
 
 sp_ic = {"ksp_monitor_true_residual": None}
 
@@ -186,16 +171,11 @@ print(GREEN % f"Setting up ICs:")
 solve(F_ic == 0, up_ic, bcs=bcs_ic, solver_parameters=sp_ic)
 
 sqrt_energy_ = sqrt(assemble(0.5 * inner(u_ic, u_ic) * dx))
-for i in range(3):
-    u_prev.sub(i).assign(up_ic.sub(i) / sqrt_energy_)
-omega_prev.project(curl(u_prev))
-for i in range(3):
-    upw.sub(i).assign(u_prev.sub(i))
-omega_out.assign(omega_prev)
+for i in range(3): u_prev.sub(i).assign(up_ic.sub(i) / sqrt_energy_)
+for i in range(3): up.sub(i).assign(u_prev.sub(i))
 
 # Output initial data
 pvd_cts.write(u_x_out, u_y_out, u_z_out)
-pvd_discts.write(p_out, omega_out)
 print_write("w")
 
 # -----------------------------------------------------------------------------
@@ -203,17 +183,15 @@ print_write("w")
 # -----------------------------------------------------------------------------
 
 u_mid = 0.5 * (u + u_prev)
-omega_mid = 0.5 * (omega + omega_prev)
 F = (
     inner((u - u_prev) / dt, v)
-  + inner(omega_mid, cross(u_mid, v))
+  + inner(curl(u_mid), cross(u_mid, v))
   + (1/Re) * inner(curl(u_mid), curl(v))
   - inner(p, div(v))
   - inner(q, div(u))
-  + inner(omega - curl(u_mid), chi)
 ) * dx
 
-bcs = [DirichletBC(VQVQW.sub(index), 0, surface) for (index, surface) in index_surface]
+bcs = [DirichletBC(VVVQ.sub(index), 0, surface) for (index, surface) in index_surface]
 sp = {"ksp_monitor_true_residual": None}
 
 # Time stepping
@@ -221,10 +199,8 @@ t = 0.0
 while t <= float(final_t) - float(dt)/2:
     t += float(dt)
     print(GREEN % f"Solving for time t = {t}:")
-    solve(F == 0, upw, bcs=bcs, solver_parameters=sp)
+    solve(F == 0, up, bcs=bcs, solver_parameters=sp)
     pvd_cts.write(u_x_out, u_y_out, u_z_out)
-    pvd_discts.write(p_out, omega_out)
     for i in range(3):
-        u_prev.sub(i).assign(upw.sub(i))
-    omega_prev.assign(omega_out)
+        u_prev.sub(i).assign(up.sub(i))
     print_write("a")
