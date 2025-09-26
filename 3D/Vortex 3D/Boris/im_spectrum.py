@@ -33,7 +33,7 @@ Fourier modal energy configuration (tunable)
 #   Ey: cos(aπx) sin(bπy) cos(cπz),    a>=0, b>=1, c>=0
 #   Ez: cos(aπx) cos(bπy) sin(cπz),    a>=0, b>=0, c>=1
 # We evaluate modal energies via assemble() wwithout FFTs.
-FOURIER_A_MAX = 2*N; FOURIER_B_MAX = 2*N; FOURIER_C_MAX = 2*N
+FOURIER_A_MAX = 4*N; FOURIER_B_MAX = 4*N; FOURIER_C_MAX = 4*N
 FOURIER_STRIDE = 1  # compute/write every step
 FOURIER_H5_PATH = output_base / "fourier_modes.h5"
 
