@@ -2,3 +2,5 @@
 *.vtu
 *.txt
 *.pyc
+*.png
+*.h5
