@@ -16,10 +16,10 @@ color_map = {
 }
 
 paths = [
-    ("Classical", f"output/classical/{data_name}.txt", "-", color_map["Classical"]),
-    ("Boris", f"output/boris/{data_name}.txt", "-", color_map["Boris"]),
-    ("Classical (IE)", f"output/classical_ie/{data_name}.txt", "--", color_map["Classical"]),
-    ("Boris (IE)", f"output/boris_ie/{data_name}.txt", "--", color_map["Boris"]),
+    ("Classical", f"Classical/output/im/{data_name}.txt", "-", color_map["Classical"]),
+    ("Boris", f"Boris/output/im/{data_name}.txt", "-", color_map["Boris"]),
+    ("Classical (IE)", f"Classical/output/ie/{data_name}.txt", "--", color_map["Classical"]),
+    ("Boris (IE)", f"Boris/output/ie/{data_name}.txt", "--", color_map["Boris"]),
 ]
 
 plt.figure()

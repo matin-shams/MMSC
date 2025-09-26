@@ -148,8 +148,8 @@ def hill(vec, radius):
 Paraview setup
 '''
 # Files
-pvd_cts = VTKFile("output/classical_ie/continuous_data.pvd")
-pvd_discts = VTKFile("output/classical_ie/discontinuous_data.pvd")
+pvd_cts = VTKFile("output/im/continuous_data.pvd")
+pvd_discts = VTKFile("output/im/discontinuous_data.pvd")
 
 # Functions
 u_x_out.rename("Velocity (x)"); u_y_out.rename("Velocity (y)"); u_z_out.rename("Velocity (z)")
@@ -175,14 +175,14 @@ qois_discts = [
 def print_write_qoi(qoi_name, qoi_file, qoi_operator, write_type):
     qoi = assemble(qoi_operator)
     print(BLUE % f"{qoi_name}: {qoi}")
-    open("output/classical_ie/" + qoi_file + ".txt", write_type).write(str(qoi) + "\n")
+    open("output/im/" + qoi_file + ".txt", write_type).write(str(qoi) + "\n")
 
 def print_write(write_type):
     for qoi in qois_cts:
         print_write_qoi(qoi["Name"], qoi["File"], qoi["Operator"], write_type)
     for qoi in qois_discts:
         if write_type == "w":
-            open("output/classical_ie/" + qoi["File"] + ".txt", "w").write("No data for discontinuous QoI at initial condition\n")
+            open("output/im/" + qoi["File"] + ".txt", "w").write("No data for discontinuous QoI at initial condition\n")
         else:
             print_write_qoi(qoi["Name"], qoi["File"], qoi["Operator"], write_type)
             
@@ -208,27 +208,27 @@ index_surface = [
 ]
 bcs_ic = [DirichletBC(VQ.sub(index), 0, surface) for (index, surface) in index_surface]
 
-# Solver paramters
+# Solver parameters (IC)
 sp_ic = {
     # Outer (nonlinear) solver
     # "snes_atol": 1.0e-11,
     # "snes_rtol": 1.0e-11,
 
-    "snes_converged_reason"     : None,
-    "snes_linesearch_monitor"   : None,
-    "snes_monitor"              : None,
+    "snes_converged_reason": None,
+    "snes_linesearch_monitor": None,
+    "snes_monitor": None,
 
     # Inner (linear) solver
-    # "ksp_type"                  : "preonly",  # Krylov subspace = GMRes
-    # "pc_type"                   : "lu",
-    # "pc_factor_mat_solver_type" : "mumps",
-    # "ksp_atol"                  : 1e-8,
-    # "ksp_rtol"                  : 1e-8,
-    # "ksp_max_it"                : 100,
+    # "ksp_type": "preonly",
+    # "pc_type": "lu",
+    # "pc_factor_mat_solver_type": "mumps",
+    # "ksp_atol": 1e-8,
+    # "ksp_rtol": 1e-8,
+    # "ksp_max_it": 100,
 
-    "ksp_monitor" : None,
-    "ksp_converged_reason" : None,
-    "ksp_monitor_true_residual" : None,
+    "ksp_monitor": None,
+    "ksp_converged_reason": None,
+    "ksp_monitor_true_residual": None,
 }
 
 # Solve
@@ -256,11 +256,12 @@ print_write("w")
 Full solve loop
 '''
 # Residual
+u_mid = 1/2 * (u + u_prev)
 F = (
     (  # Momentum
         1/dt * inner(u - u_prev, v)
-      - inner(cross(u, curl(u)), v)
-      + 1/Re * inner(curl(u), curl(v))
+      - inner(cross(u_mid, curl(u_mid)), v)
+      + 1/Re * inner(curl(u_mid), curl(v))
       - inner(p, div(v))
     )
   + (  # Incompressiblity
@@ -274,7 +275,7 @@ index_surface = [
 ]
 bcs = [DirichletBC(VQ.sub(index), 0, surface) for (index, surface) in index_surface]
 
-# Solver paramters
+# Solver parameters
 sp = {
     # Outer (nonlinear) solver
     # "snes_atol": 1.0e-11,
